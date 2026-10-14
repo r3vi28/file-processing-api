@@ -1,0 +1,23 @@
+{
+  "name": "file-processing-api",
+  "version": "1.0.0",
+  "description": "API to process CSV and text files with streams, validation and downloadable reports",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "private": true,
+  "engines": { "node": ">=24" },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "devEngines": {
+    "packageManager": {
+      "name": "pnpm",
+      "version": "12.11.2",
+      "onFail": "download"
+    }
+  },
+  "packageManager": "pnpm@12.11.2",
+  "type": "module"
+}
