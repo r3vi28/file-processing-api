@@ -2,7 +2,6 @@
   "name": "file-processing-api",
   "version": "1.0.0",
   "description": "API to process CSV and text files with streams, validation and downloadable reports",
-  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -21,7 +20,7 @@
     }
   },
   "packageManager": "pnpm@12.11.2",
-  "type": "module",
+  "type": "commonjs",
   "dependencies": {
     "cors": "^2.8.6",
     "dotenv": "^18.0.7",
