@@ -1,5 +1,5 @@
 import type { Request, Response, NextFunction } from "express";
-import { AppError } from "../shared/errors";
+import { AppError, BadRequestError } from "../shared/errors";
 
 export function errorHandler(
   err: unknown,
@@ -7,17 +7,40 @@ export function errorHandler(
   res: Response,
   next: NextFunction,
 ): void {
-  if (err instanceof AppError) {
-    res.status(err.statusCode).json({
+  if (res.headersSent) {
+    next(err);
+    return;
+  }
+
+  const error = isJsonParseError(err)
+    ? new BadRequestError("Malformed JSON body")
+    : err;
+
+  if (error instanceof AppError) {
+    res.status(error.statusCode).json({
       error: {
-        code: err.code,
-        message: err.message,
-        details: err.details,
+        code: error.code,
+        message: error.message,
+        details: error.details,
       },
     });
 
     return;
   }
 
-  next(err);
+  console.error(err);
+  res.status(500).json({
+    error: {
+      code: "INTERNAL_ERROR",
+      message: "Internal server error",
+    },
+  });
+}
+
+function isJsonParseError(err: unknown): boolean {
+  return (
+    err instanceof SyntaxError &&
+    "type" in err &&
+    err.type === "entity.parse.failed"
+  );
 }
