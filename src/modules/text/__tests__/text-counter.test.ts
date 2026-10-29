@@ -16,6 +16,14 @@ function countWords(...chunks: string[]): number {
   return counter.finish().words;
 }
 
+function countLines(...chunks: string[]): number {
+  const counter = new TextCounter();
+  for (const chunk of chunks) {
+    counter.push(chunk);
+  }
+  return counter.finish().lines;
+}
+
 describe("TextCounter characters", () => {
   it("counts 0 when nothing is pushed", () => {
     expect(countCharacters()).toBe(0);
@@ -150,5 +158,91 @@ describe("TextCounter words", () => {
 
     expect(first.finish().words).toBe(1);
     expect(second.finish().words).toBe(1);
+  });
+});
+
+describe("TextCounter lines", () => {
+  it("counts 0 when nothing is pushed", () => {
+    expect(countLines()).toBe(0);
+  });
+
+  it("counts 0 for an empty chunk", () => {
+    expect(countLines("")).toBe(0);
+  });
+
+  it("counts 1 line for text without a line break", () => {
+    expect(countLines("a")).toBe(1);
+  });
+
+  it("counts a line made only of spaces", () => {
+    expect(countLines("   ")).toBe(1);
+  });
+
+  it("does not add a line for a trailing line break", () => {
+    expect(countLines("a\n")).toBe(1);
+  });
+
+  it("counts the last line when there is no trailing line break", () => {
+    expect(countLines("a\nb")).toBe(2);
+  });
+
+  it("counts a single line break as one empty line", () => {
+    expect(countLines("\n")).toBe(1);
+  });
+
+  it("counts empty lines", () => {
+    expect(countLines("a\n\n")).toBe(2);
+    expect(countLines("\n\n\n")).toBe(3);
+  });
+
+  it("counts CRLF as a single line break", () => {
+    expect(countLines("a\r\nb\r\n")).toBe(2);
+    expect(countLines("\r\n")).toBe(1);
+  });
+
+  it("counts a lone carriage return as a line break", () => {
+    expect(countLines("a\rb")).toBe(2);
+    expect(countLines("a\r")).toBe(1);
+  });
+
+  it("counts a carriage return followed by CRLF as two line breaks", () => {
+    expect(countLines("a\r\r\n")).toBe(2);
+  });
+
+  it("handles mixed line endings", () => {
+    expect(countLines("a\nb\r\nc\rd")).toBe(4);
+  });
+
+  it("counts CRLF split across two chunks once", () => {
+    expect(countLines("a\r", "\nb")).toBe(2);
+  });
+
+  it("counts a carriage return at the end of a chunk when the next chunk does not start with a line feed", () => {
+    expect(countLines("a\r", "b")).toBe(2);
+    expect(countLines("a\r", "\r\n")).toBe(2);
+  });
+
+  it("applies the trailing line break rule to the last chunk, not to each chunk", () => {
+    expect(countLines("a\n", "b")).toBe(2);
+    expect(countLines("a", "\n", "")).toBe(1);
+  });
+
+  it("returns the same counts when finish is called twice", () => {
+    const counter = new TextCounter();
+    counter.push("a\nb");
+
+    expect(counter.finish()).toEqual(counter.finish());
+    expect(counter.finish().lines).toBe(2);
+  });
+
+  it("keeps a separate line state per instance", () => {
+    const first = new TextCounter();
+    const second = new TextCounter();
+
+    first.push("a\r");
+    second.push("\nb");
+
+    expect(first.finish().lines).toBe(1);
+    expect(second.finish().lines).toBe(2);
   });
 });
