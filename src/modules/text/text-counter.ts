@@ -4,6 +4,11 @@ export type TextCounts = Omit<TextResult, "kind">;
 
 const WHITESPACE = /\s/;
 
+/**
+ * Streaming counter: call `push` for each decoded chunk, then `finish` once.
+ * State is kept between chunks, so words and CRLF split across chunks are
+ * counted correctly. Characters are counted as code points.
+ */
 export class TextCounter {
   private characters = 0;
   private words = 0;
@@ -16,6 +21,7 @@ export class TextCounter {
     for (const char of chunk) {
       this.characters++;
 
+      // CRLF counts as one break; a lone CR also counts (old Mac line endings)
       if (char === "\r") {
         this.lineBreaks++;
       } else if (char === "\n" && !this.previousWasCR) {
@@ -35,6 +41,7 @@ export class TextCounter {
   }
 
   finish(): TextCounts {
+    // A trailing newline does not start a new line; non-empty text without one does
     const lines =
       this.lineBreaks + (this.characters > 0 && !this.endsWithBreak ? 1 : 0);
 
