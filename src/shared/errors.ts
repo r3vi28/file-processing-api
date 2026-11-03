@@ -8,6 +8,7 @@ export class AppError extends Error {
     readonly details?: unknown,
   ) {
     super(message);
+    // new.target is the subclass being built, so name is "NotFoundError", etc.
     this.name = new.target.name;
   }
 }

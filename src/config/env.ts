@@ -1,6 +1,8 @@
 import "dotenv/config";
 import { z } from "zod";
 
+// CORS compares origins exactly: "https://a.com/" would never match.
+// `abort: true` skips the refine when the URL is invalid (new URL would throw).
 const originSchema = z.url({ protocol: /^https?$/, abort: true }).refine(
   (value) => {
     return new URL(value).origin === value;

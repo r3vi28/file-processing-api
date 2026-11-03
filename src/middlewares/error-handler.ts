@@ -7,6 +7,7 @@ export function errorHandler(
   res: Response,
   next: NextFunction,
 ): void {
+  // Response already started: let Express close the connection
   if (res.headersSent) {
     next(err);
     return;
@@ -37,6 +38,7 @@ export function errorHandler(
   });
 }
 
+/** express.json() marks body parse failures with type "entity.parse.failed". */
 function isJsonParseError(err: unknown): boolean {
   return (
     err instanceof SyntaxError &&
