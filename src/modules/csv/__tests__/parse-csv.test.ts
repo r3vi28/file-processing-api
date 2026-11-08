@@ -170,3 +170,96 @@ describe("parseCsv", () => {
     expect(source.destroyed).toBe(true);
   });
 });
+
+describe("parseCsv malformed rows", () => {
+  it("does not mark valid rows with an error", async () => {
+    const [row] = await collect(text("name,age\nAna,30\n"));
+
+    expect(row?.error).toBeUndefined();
+  });
+
+  it("marks a row with too many columns and keeps going", async () => {
+    const rows = await collect(text("name,age\nAna,30,x\nLuis,25\n"));
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      line: 2,
+      error: "Expected 2 columns, found 3",
+    });
+    // a malformed row carries no values, so nobody validates half a row
+    expect(rows[0]?.record).toEqual({});
+    expect(rows[1]).toEqual({ line: 3, record: { name: "Luis", age: "25" } });
+  });
+
+  it("marks a row with too few columns and keeps going", async () => {
+    const rows = await collect(text("name,age\nAna\nLuis,25\n"));
+
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({
+      line: 2,
+      error: "Expected 2 columns, found 1",
+    });
+    expect(rows[1]).toEqual({ line: 3, record: { name: "Luis", age: "25" } });
+  });
+
+  it("keeps going after several malformed rows", async () => {
+    const rows = await collect(text("a,b\n1\n2,2\n3,3,3\n4\n5,5\n"));
+
+    expect(rows.map((row) => [row.line, row.error])).toEqual([
+      [2, "Expected 2 columns, found 1"],
+      [3, undefined],
+      [4, "Expected 2 columns, found 3"],
+      [5, "Expected 2 columns, found 1"],
+      [6, undefined],
+    ]);
+  });
+
+  it("accepts an empty value: it is a column, not a missing one", async () => {
+    expect(await collect(text("name,age\nAna,\n"))).toEqual([
+      { line: 2, record: { name: "Ana", age: "" } },
+    ]);
+  });
+
+  it("skips blank lines without shifting line numbers", async () => {
+    const rows = await collect(text("name,age\nAna,30\n\nLuis,25\n\n\n"));
+
+    expect(rows).toEqual([
+      { line: 2, record: { name: "Ana", age: "30" } },
+      { line: 4, record: { name: "Luis", age: "25" } },
+    ]);
+  });
+
+  it("skips blank CRLF lines", async () => {
+    const rows = await collect(text("name,age\r\nAna,30\r\n\r\nLuis,25\r\n"));
+
+    expect(rows.map((row) => row.line)).toEqual([2, 4]);
+  });
+
+  it("marks a line with only spaces, because it is not blank", async () => {
+    const rows = await collect(text("name,age\nAna,30\n   \nLuis,25\n"));
+
+    expect(rows[1]).toMatchObject({
+      line: 3,
+      error: "Expected 2 columns, found 1",
+    });
+    expect(rows).toHaveLength(3);
+  });
+
+  it("keeps a quote inside an unquoted value as a literal character", async () => {
+    const [row] = await collect(text('name,age\nAn"a,30\n'));
+
+    expect(row).toEqual({ line: 2, record: { name: 'An"a', age: "30" } });
+  });
+
+  it("keeps text after a closing quote as part of the value", async () => {
+    const [row] = await collect(text('name,age\n"Ana"x,30\n'));
+
+    expect(row).toEqual({ line: 2, record: { name: '"Ana"x', age: "30" } });
+  });
+
+  it("rejects when a quote is never closed, because the rest of the file cannot be split into rows", async () => {
+    await expect(
+      collect(text('name,age\nLuis,25\n"Ana,30\nEva,40\n')),
+    ).rejects.toMatchObject({ code: "CSV_QUOTE_NOT_CLOSED" });
+  });
+});
